@@ -45,8 +45,8 @@ if __name__ == '__main__':
         gr.Markdown(
             "# <center> Sovits Umamusume\n"
             "## <center> The input audio should be clean and pure voice without background music.\n"
-            "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=sayashi.vits-models)\n\n"
-            "[Open In Colab]()"
+            "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=sayashi.Sovits-Umamusume)\n\n"
+            "[Open In Colab](https://colab.research.google.com/drive/1wfsBbMzmtLflOJeqc5ZnJiLY7L239hJW?usp=share_link)"
             "\n\n"
             "[Original Repo](https://github.com/innnky/so-vits-svc/tree/4.0)"
         )

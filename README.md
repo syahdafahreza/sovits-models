@@ -1,6 +1,6 @@
 ---
-title: Sovits Umamusume
-emoji: 🐎
+title: Sovits Models
+emoji: 🎙️
 colorFrom: gray
 colorTo: pink
 sdk: gradio

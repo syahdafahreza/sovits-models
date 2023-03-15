@@ -6,6 +6,7 @@ import numpy as np
 import soundfile
 from inference.infer_tool import Svc
 import logging
+import webbrowser
 
 logging.getLogger('numba').setLevel(logging.WARNING)
 logging.getLogger('markdown_it').setLevel(logging.WARNING)
@@ -35,10 +36,17 @@ def create_vc_fn(model, sid):
     return vc_fn
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--api', action="store_true", default=False)
+    parser.add_argument("--share", action="store_true", default=False, help="share gradio app")
+    parser.add_argument("--colab", action="store_true", default=False, help="share gradio app")
+    args = parser.parse_args()
+
     models = []
     for f in os.listdir("models"):
         name = f
-        model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json")
+        model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json", device=args.device)
         cover = f"models/{f}/cover.png" if os.path.exists(f"models/{f}/cover.png") else None
         models.append((name, cover, create_vc_fn(model, name)))
     with gr.Blocks() as app:
@@ -69,4 +77,6 @@ if __name__ == '__main__':
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
                 vc_submit.click(vc_fn, [vc_input, vc_transform, auto_f0], [vc_output1, vc_output2])
-        app.queue(concurrency_count=1).launch()
+        if args.colab:
+            webbrowser.open("http://127.0.0.1:7860")
+        app.queue(concurrency_count=1, api_open=args.api).launch(share=args.share)

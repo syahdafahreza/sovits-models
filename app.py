@@ -70,6 +70,3 @@ if __name__ == '__main__':
                             vc_output2 = gr.Audio(label="Output Audio")
                 vc_submit.click(vc_fn, [vc_input, vc_transform, auto_f0], [vc_output1, vc_output2])
         app.queue(concurrency_count=1).launch()
-
-
-

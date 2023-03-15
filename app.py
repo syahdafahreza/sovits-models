@@ -7,6 +7,7 @@ import soundfile
 from inference.infer_tool import Svc
 import logging
 import webbrowser
+import argparse
 
 logging.getLogger('numba').setLevel(logging.WARNING)
 logging.getLogger('markdown_it').setLevel(logging.WARNING)

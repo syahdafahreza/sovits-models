@@ -14,6 +14,7 @@ logging.getLogger('markdown_it').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
+limitation = os.getenv("SYSTEM") == "spaces"  # limit audio length in huggingface spaces
 def create_vc_fn(model, sid):
     def vc_fn(input_audio, vc_transform, auto_f0):
         if input_audio is None:
@@ -21,7 +22,7 @@ def create_vc_fn(model, sid):
         sampling_rate, audio = input_audio
         # print(audio.shape,sampling_rate)
         duration = audio.shape[0] / sampling_rate
-        if duration > 45:
+        if duration > 45 and limitation:
             return "Please upload an audio file that is less than 45 seconds. If you need to generate a longer audio file, please use Colab.", None
         audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
         if len(audio.shape) > 1:
@@ -70,7 +71,7 @@ if __name__ == '__main__':
                         )
                     with gr.Row():
                         with gr.Column():
-                            vc_input = gr.Audio(label="Input audio (less than 45 seconds)")
+                            vc_input = gr.Audio(label="Input audio"+' (less than 45 seconds)' if limitation else '')
                             vc_transform = gr.Number(label="vc_transform", value=0)
                             auto_f0 = gr.Checkbox(label="auto_f0", value=False)
                             vc_submit = gr.Button("Generate", variant="primary")

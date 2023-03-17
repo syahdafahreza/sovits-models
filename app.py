@@ -8,13 +8,24 @@ from inference.infer_tool import Svc
 import logging
 import webbrowser
 import argparse
-
+import gradio.processing_utils as gr_processing_utils
 logging.getLogger('numba').setLevel(logging.WARNING)
 logging.getLogger('markdown_it').setLevel(logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 limitation = os.getenv("SYSTEM") == "spaces"  # limit audio length in huggingface spaces
+
+audio_postprocess_ori = gr.Audio.postprocess
+
+def audio_postprocess(self, y):
+    data = audio_postprocess_ori(self, y)
+    if data is None:
+        return None
+    return gr_processing_utils.encode_url_or_file_to_base64(data["name"])
+
+
+gr.Audio.postprocess = audio_postprocess
 def create_vc_fn(model, sid):
     def vc_fn(input_audio, vc_transform, auto_f0):
         if input_audio is None:

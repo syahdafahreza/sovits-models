@@ -32,8 +32,8 @@ def create_vc_fn(model, sid):
             return "You need to upload an audio", None
         sampling_rate, audio = input_audio
         duration = audio.shape[0] / sampling_rate
-        if duration > 45 and limitation:
-            return "Please upload an audio file that is less than 45 seconds. If you need to generate a longer audio file, please use Colab.", None
+        if duration > 20 and limitation:
+            return "Please upload an audio file that is less than 20 seconds. If you need to generate a longer audio file, please use Colab.", None
         audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
         if len(audio.shape) > 1:
             audio = librosa.to_mono(audio.transpose(1, 0))
@@ -87,7 +87,7 @@ if __name__ == '__main__':
                         )
                     with gr.Row():
                         with gr.Column():
-                            vc_input = gr.Audio(label="Input audio"+' (less than 10 seconds)' if limitation else '')
+                            vc_input = gr.Audio(label="Input audio"+' (less than 20 seconds)' if limitation else '')
                             vc_transform = gr.Number(label="vc_transform", value=0)
                             auto_f0 = gr.Checkbox(label="auto_f0", value=False)
                             vc_submit = gr.Button("Generate", variant="primary")

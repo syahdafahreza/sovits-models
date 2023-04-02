@@ -64,7 +64,13 @@ if __name__ == '__main__':
             "![visitor badge](https://visitor-badge.glitch.me/badge?page_id=sayashi.Sovits-Umamusume)\n\n"
             "[Open In Colab](https://colab.research.google.com/drive/1wfsBbMzmtLflOJeqc5ZnJiLY7L239hJW?usp=share_link)"
             " without queue and length limitation.\n\n"
-            "[Original Repo](https://github.com/innnky/so-vits-svc/tree/4.0)"
+            "[Original Repo](https://github.com/svc-develop-team/so-vits-svc)\n\n"
+            "Other models:\n"
+            "[rudolf](https://huggingface.co/spaces/sayashi/sovits-rudolf)\n"
+            "[teio](https://huggingface.co/spaces/sayashi/sovits-teio)\n"
+            "[goldship](https://huggingface.co/spaces/sayashi/sovits-goldship)\n"
+            "[tannhauser](https://huggingface.co/spaces/sayashi/sovits-tannhauser)\n"
+
         )
         with gr.Tabs():
             for (name, cover, vc_fn) in models:
@@ -77,7 +83,7 @@ if __name__ == '__main__':
                         )
                     with gr.Row():
                         with gr.Column():
-                            vc_input = gr.Audio(label="Input audio"+' (less than 45 seconds)' if limitation else '')
+                            vc_input = gr.Audio(label="Input audio"+' (less than 30 seconds)' if limitation else '')
                             vc_transform = gr.Number(label="vc_transform", value=0)
                             auto_f0 = gr.Checkbox(label="auto_f0", value=False)
                             vc_submit = gr.Button("Generate", variant="primary")

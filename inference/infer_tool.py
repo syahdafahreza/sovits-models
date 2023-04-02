@@ -109,7 +109,7 @@ def split_list_by_n(list_collection, n, pre=0):
 
 
 class Svc(object):
-    def __init__(self, net_g_path, config_path,
+    def __init__(self, net_g_path, config_path, hubert_model,
                  device=None,
                  cluster_model_path="logs/44k/kmeans_10000.pt"):
         self.net_g_path = net_g_path
@@ -123,7 +123,7 @@ class Svc(object):
         self.hop_size = self.hps_ms.data.hop_length
         self.spk2id = self.hps_ms.spk
         # 加载hubert
-        self.hubert_model = utils.get_hubert_model().to(self.dev)
+        self.hubert_model = hubert_model
         self.load_model()
         if os.path.exists(cluster_model_path):
             self.cluster_model = cluster.get_cluster_model(cluster_model_path)

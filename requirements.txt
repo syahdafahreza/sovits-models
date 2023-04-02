@@ -1,6 +1,6 @@
 Flask
 Flask_Cors
-gradio
+gradio==3.18.0
 numpy
 playsound
 pydub

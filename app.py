@@ -1,9 +1,8 @@
-import io
 import os
 import gradio as gr
 import librosa
 import numpy as np
-import soundfile
+import utils
 from inference.infer_tool import Svc
 import logging
 import webbrowser
@@ -40,6 +39,7 @@ def create_vc_fn(model, sid):
         if sampling_rate != 44100:
             audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=44100)
         out_audio, out_sr = model.infer(sid, vc_transform, audio, auto_predict_f0=auto_f0)
+        model.clear_empty()
         return "Success", (44100, out_audio.cpu().numpy())
     return vc_fn
 
@@ -50,11 +50,11 @@ if __name__ == '__main__':
     parser.add_argument("--share", action="store_true", default=False, help="share gradio app")
     parser.add_argument("--colab", action="store_true", default=False, help="share gradio app")
     args = parser.parse_args()
-
+    hubert_model = utils.get_hubert_model().to(args.device)
     models = []
     for f in os.listdir("models"):
         name = f
-        model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json", device=args.device)
+        model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json", device=args.device, hubert_model=hubert_model)
         cover = f"models/{f}/cover.png" if os.path.exists(f"models/{f}/cover.png") else None
         models.append((name, cover, create_vc_fn(model, name)))
     with gr.Blocks() as app:

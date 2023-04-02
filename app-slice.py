@@ -1,13 +1,15 @@
 import os
-import io
 import gradio as gr
 import librosa
 import numpy as np
+from pathlib import Path
+import inference.infer_tool as infer_tool
 import utils
 from inference.infer_tool import Svc
 import logging
-import soundfile
+import webbrowser
 import argparse
+import soundfile
 import gradio.processing_utils as gr_processing_utils
 logging.getLogger('numba').setLevel(logging.WARNING)
 logging.getLogger('markdown_it').setLevel(logging.WARNING)
@@ -27,35 +29,38 @@ def audio_postprocess(self, y):
 
 gr.Audio.postprocess = audio_postprocess
 def create_vc_fn(model, sid):
-    def vc_fn(input_audio, vc_transform, auto_f0):
+    def vc_fn(input_audio, vc_transform, auto_f0, slice_db, noise_scale, pad_seconds):
         if input_audio is None:
-            return "You need to upload an audio", None
-        sampling_rate, audio = input_audio
-        duration = audio.shape[0] / sampling_rate
-        if duration > 45 and limitation:
-            return "Please upload an audio file that is less than 45 seconds. If you need to generate a longer audio file, please use Colab.", None
-        audio = (audio / np.iinfo(audio.dtype).max).astype(np.float32)
-        if len(audio.shape) > 1:
-            audio = librosa.to_mono(audio.transpose(1, 0))
-        if sampling_rate != 16000:
-            audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=16000)
-        raw_path = io.BytesIO()
-        soundfile.write(raw_path, audio, 16000, format="wav")
-        raw_path.seek(0)
-        out_audio, out_sr = model.infer(sid, vc_transform, raw_path,
-                                       auto_predict_f0=auto_f0,
-                                       )
-        return "Success", (44100, out_audio.cpu().numpy())
+            return "You need to select an audio", None
+        raw_audio_path = f"raw/{input_audio}"
+        if "." not in raw_audio_path:
+            raw_audio_path += ".wav"
+        infer_tool.format_wav(raw_audio_path)
+        wav_path = Path(raw_audio_path).with_suffix('.wav')
+        _audio = model.slice_inference(
+            wav_path, sid, vc_transform, slice_db,
+            cluster_infer_ratio=0,
+            auto_predict_f0=auto_f0,
+            noice_scale=noise_scale,
+            pad_seconds=pad_seconds)
+        model.clear_empty()
+        return "Success", (44100, _audio)
     return vc_fn
+
+def refresh_raw_wav():
+    return gr.Dropdown.update(choices=os.listdir("raw"))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default='cpu')
     parser.add_argument('--api', action="store_true", default=False)
     parser.add_argument("--share", action="store_true", default=False, help="share gradio app")
+    parser.add_argument("--colab", action="store_true", default=False, help="share gradio app")
     args = parser.parse_args()
     hubert_model = utils.get_hubert_model().to(args.device)
     models = []
+    raw = os.listdir("raw")
     for f in os.listdir("models"):
         name = f
         model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json", device=args.device, hubert_model=hubert_model)
@@ -87,12 +92,20 @@ if __name__ == '__main__':
                         )
                     with gr.Row():
                         with gr.Column():
-                            vc_input = gr.Audio(label="Input audio"+' (less than 10 seconds)' if limitation else '')
+                            with gr.Row():
+                                vc_input = gr.Dropdown(label="Input audio", choices=raw)
+                                vc_refresh = gr.Button("🔁", variant="primary")
                             vc_transform = gr.Number(label="vc_transform", value=0)
+                            slice_db = gr.Number(label="slice_db", value=-40)
+                            noise_scale = gr.Number(label="noise_scale", value=0.4)
+                            pad_seconds = gr.Number(label="pad_seconds", value=0.5)
                             auto_f0 = gr.Checkbox(label="auto_f0", value=False)
                             vc_submit = gr.Button("Generate", variant="primary")
                         with gr.Column():
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
-                vc_submit.click(vc_fn, [vc_input, vc_transform, auto_f0], [vc_output1, vc_output2])
+                vc_submit.click(vc_fn, [vc_input, vc_transform, auto_f0, slice_db,  noise_scale, pad_seconds], [vc_output1, vc_output2])
+                vc_refresh.click(refresh_raw_wav, [], [vc_input])
+        if args.colab:
+            webbrowser.open("http://127.0.0.1:7860")
         app.queue(concurrency_count=1, api_open=args.api).launch(share=args.share)

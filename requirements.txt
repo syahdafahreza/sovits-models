@@ -19,3 +19,4 @@ onnxsim
 onnxoptimizer
 fairseq
 librosa
+edge-tts

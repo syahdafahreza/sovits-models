@@ -1,7 +1,6 @@
 import os
 import gradio as gr
-import librosa
-import numpy as np
+import edge_tts
 from pathlib import Path
 import inference.infer_tool as infer_tool
 import utils
@@ -9,6 +8,8 @@ from inference.infer_tool import Svc
 import logging
 import webbrowser
 import argparse
+import asyncio
+import librosa
 import soundfile
 import gradio.processing_utils as gr_processing_utils
 logging.getLogger('numba').setLevel(logging.WARNING)
@@ -29,14 +30,24 @@ def audio_postprocess(self, y):
 
 gr.Audio.postprocess = audio_postprocess
 def create_vc_fn(model, sid):
-    def vc_fn(input_audio, vc_transform, auto_f0, slice_db, noise_scale, pad_seconds):
-        if input_audio is None:
-            return "You need to select an audio", None
-        raw_audio_path = f"raw/{input_audio}"
-        if "." not in raw_audio_path:
-            raw_audio_path += ".wav"
-        infer_tool.format_wav(raw_audio_path)
-        wav_path = Path(raw_audio_path).with_suffix('.wav')
+    def vc_fn(input_audio, vc_transform, auto_f0, slice_db, noise_scale, pad_seconds, tts_text, tts_voice, tts_mode):
+        if tts_mode:
+            if len(tts_text) > 100 and limitation:
+                return "Text is too long", None
+            if tts_text is None or tts_voice is None:
+                return "You need to enter text and select a voice", None
+            asyncio.run(edge_tts.Communicate(tts_text, "-".join(tts_voice.split('-')[:-1])).save("tts.mp3"))
+            audio, sr = librosa.load("tts.mp3")
+            soundfile.write("tts.wav", audio, 24000, format="wav")
+            wav_path = "tts.wav"
+        else:
+            if input_audio is None:
+                return "You need to select an audio", None
+            raw_audio_path = f"raw/{input_audio}"
+            if "." not in raw_audio_path:
+                raw_audio_path += ".wav"
+            infer_tool.format_wav(raw_audio_path)
+            wav_path = Path(raw_audio_path).with_suffix('.wav')
         _audio = model.slice_inference(
             wav_path, sid, vc_transform, slice_db,
             cluster_infer_ratio=0,
@@ -50,6 +61,11 @@ def create_vc_fn(model, sid):
 def refresh_raw_wav():
     return gr.Dropdown.update(choices=os.listdir("raw"))
 
+def change_to_tts_mode(tts_mode):
+    if tts_mode:
+        return gr.Audio.update(visible=False), gr.Button.update(visible=False), gr.Textbox.update(visible=True), gr.Dropdown.update(visible=True)
+    else:
+        return gr.Audio.update(visible=True), gr.Button.update(visible=True), gr.Textbox.update(visible=False), gr.Dropdown.update(visible=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -60,6 +76,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     hubert_model = utils.get_hubert_model().to(args.device)
     models = []
+    voices = []
+    tts_voice_list = asyncio.get_event_loop().run_until_complete(edge_tts.list_voices())
+    for r in tts_voice_list:
+        voices.append(f"{r['ShortName']}-{r['Gender']}")
     raw = os.listdir("raw")
     for f in os.listdir("models"):
         name = f
@@ -100,12 +120,16 @@ if __name__ == '__main__':
                             noise_scale = gr.Number(label="noise_scale", value=0.4)
                             pad_seconds = gr.Number(label="pad_seconds", value=0.5)
                             auto_f0 = gr.Checkbox(label="auto_f0", value=False)
+                            tts_mode = gr.Checkbox(label="tts (use edge-tts as input)", value=False)
+                            tts_text = gr.Textbox(visible=False,label="TTS text (100 words limitation)" if limitation else "TTS text")
+                            tts_voice = gr.Dropdown(choices=voices, visible=False)
                             vc_submit = gr.Button("Generate", variant="primary")
                         with gr.Column():
                             vc_output1 = gr.Textbox(label="Output Message")
                             vc_output2 = gr.Audio(label="Output Audio")
-                vc_submit.click(vc_fn, [vc_input, vc_transform, auto_f0, slice_db,  noise_scale, pad_seconds], [vc_output1, vc_output2])
+                vc_submit.click(vc_fn, [vc_input, vc_transform, auto_f0, slice_db,  noise_scale, pad_seconds, tts_text, tts_voice, tts_mode], [vc_output1, vc_output2])
                 vc_refresh.click(refresh_raw_wav, [], [vc_input])
+                tts_mode.change(change_to_tts_mode, [tts_mode], [vc_input, vc_refresh, tts_text, tts_voice])
         if args.colab:
             webbrowser.open("http://127.0.0.1:7860")
         app.queue(concurrency_count=1, api_open=args.api).launch(share=args.share)

@@ -90,7 +90,7 @@ if __name__ == '__main__':
         voices.append(f"{r['ShortName']}-{r['Gender']}")
     for f in os.listdir("models"):
         name = f
-        model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json", device=args.device, hubert_model=hubert_model)
+        model = Svc(fr"models/{f}/{f}.pth", f"models/{f}/config.json", device=args.device)
         cover = f"models/{f}/cover.png" if os.path.exists(f"models/{f}/cover.png") else None
         models.append((name, cover, create_vc_fn(model, name)))
     with gr.Blocks() as app:
